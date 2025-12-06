@@ -1,4 +1,9 @@
 {
   "name": "DevafoodSalesManager",
-  "displayName": "DevafoodSalesManager"
+  "displayName": "DevafoodSalesManager",
+  "extra": {
+    "eas": {
+      "projectId": "b70ba4d4-8387-4643-bec7-86c367e1a510"
+    }
+  }
 }
