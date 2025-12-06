@@ -1,97 +1,269 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# DevaFood Sales Manager
 
-# Getting Started
+A React Native application for managing multiple branch sales, inventory, and earnings tracking for food businesses.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## 📱 Features
 
-## Step 1: Start Metro
+### Owner Features
+- **Dashboard**: Real-time view of today's earnings and product sales
+- **Branch Management**: Create and manage multiple branches
+- **Product Management**: Add, edit, and manage products with images
+- **Branch-Specific Pricing**: Set different prices for products per branch
+- **Key-Based Authorization**: Secure branch access with unique 8-character keys
+- **Earnings Analytics**: 
+  - View sales by Daily/Weekly/Monthly periods
+  - Export Excel reports with custom date ranges
+  - Multi-sheet reports (Branch Summary, Product Details, All Transactions)
+- **Branch Keys Management**: View, share, and regenerate access keys
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+### Branch Head Features
+- **Quick Sales Entry**: Tap products to record sales instantly
+- **Sound Feedback**: Audio confirmation on successful sales (no blocking alerts)
+- **Daily Counter**: Visual badges showing products sold today
+- **Offline Support**: Sales queue when offline, syncs when back online
+- **Branch Selection**: Secure key-based access to assigned branch
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## 🛠️ Tech Stack
 
-```sh
-# Using npm
+- **React Native**: 0.82.1 (CLI)
+- **Navigation**: @react-navigation/native with native-stack
+- **Backend**: Supabase (PostgreSQL + Realtime)
+- **Storage**: 
+  - AsyncStorage (auth persistence)
+  - EncryptedStorage (secure tokens)
+- **Media**: 
+  - react-native-image-picker
+  - react-native-sound
+  - react-native-video
+- **Excel Export**: xlsx, react-native-fs, react-native-share
+- **Platform**: Android SDK 35
+
+## 📦 Installation
+
+### Prerequisites
+- Node.js >= 18
+- Java JDK 17
+- Android Studio
+- React Native CLI
+
+### Setup
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/vipul-dev9404/DevaFoodSaleManager.git
+cd DevaFoodSaleManager
+```
+
+2. **Install dependencies**
+```bash
+npm install
+```
+
+3. **Configure Supabase**
+   
+Create `src/lib/supabaseClient.js`:
+```javascript
+import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import 'react-native-url-polyfill/auto';
+
+const supabaseUrl = 'YOUR_SUPABASE_URL';
+const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
+```
+
+4. **Database Schema**
+
+Run these SQL commands in your Supabase SQL Editor:
+
+```sql
+-- Branches table
+CREATE TABLE branches (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  code TEXT UNIQUE NOT NULL,
+  access_key TEXT UNIQUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Products table
+CREATE TABLE products (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  price NUMERIC DEFAULT 0,
+  image_url TEXT,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Branch Products (branch-specific pricing)
+CREATE TABLE branch_products (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+  price NUMERIC NOT NULL,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(branch_id, product_id)
+);
+
+-- Sales table
+CREATE TABLE sales (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL,
+  price_at_sale NUMERIC NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create indexes
+CREATE INDEX idx_sales_branch ON sales(branch_id);
+CREATE INDEX idx_sales_product ON sales(product_id);
+CREATE INDEX idx_sales_created ON sales(created_at);
+CREATE INDEX idx_branches_access_key ON branches(access_key);
+```
+
+5. **Android Setup**
+
+```bash
+cd android
+./gradlew clean
+cd ..
+```
+
+6. **Run the app**
+
+```bash
+# Start Metro bundler
 npm start
 
-# OR using Yarn
-yarn start
+# In another terminal, run Android
+npx react-native run-android
 ```
 
-## Step 2: Build and run your app
+## 🔑 Build Release APK/AAB
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+### Generate Release APK
+```bash
+cd android
+./gradlew assembleRelease
+```
+Output: `android/app/build/outputs/apk/release/app-release.apk`
 
-### Android
+### Generate Release AAB (for Play Store)
+```bash
+cd android
+./gradlew bundleRelease
+```
+Output: `android/app/build/outputs/bundle/release/app-release.aab`
 
-```sh
-# Using npm
-npm run android
+### Keystore Configuration
+The keystore is already configured in `android/app/build.gradle`:
+- Location: `android/app/devafood-release-key.keystore`
+- Credentials stored in: `android/credentials/`
 
-# OR using Yarn
-yarn android
+## 📊 Usage
+
+### Owner Login
+1. Login with owner credentials
+2. Access full dashboard and management tools
+
+### Branch Head Access
+1. Select "Branch Head" from welcome screen
+2. Choose your branch
+3. Enter 8-character access key (get from owner)
+4. Start recording sales
+
+### Recording Sales
+- Tap product card to increment quantity
+- Sound plays on successful sale
+- Badge shows daily sales count
+- No blocking alerts for quick entry
+
+### Exporting Reports
+1. Navigate to "Earnings" from Owner Dashboard
+2. View Daily/Weekly/Monthly tabs
+3. Click Excel button for custom date range
+4. Enter dates (YYYY-MM-DD format)
+5. Click Export to generate and share Excel file
+
+## 🗂️ Project Structure
+
+```
+DevafoodSalesManager/
+├── src/
+│   ├── Auth/
+│   │   └── LoginScreen.js
+│   ├── screens/
+│   │   ├── Owner/
+│   │   │   ├── AddBranchScreen.js
+│   │   │   ├── AddProductScreen.js
+│   │   │   ├── BranchEarningsScreen.js
+│   │   │   ├── BranchProductManagerScreen.js
+│   │   │   ├── EditProductScreen.js
+│   │   │   ├── ExportReportsScreen.js
+│   │   │   ├── ManageBranchKeysScreen.js
+│   │   │   └── ManageProductsScreen.js
+│   │   ├── Branch/
+│   │   │   ├── BranchHomeScreen.js
+│   │   │   ├── BranchKeyVerification.js
+│   │   │   └── SelectBranchScreen.js
+│   │   ├── OwnerDashboard.js
+│   │   └── WelcomeScreen.js
+│   ├── lib/
+│   │   ├── supabaseClient.js
+│   │   └── offlineQueue.js
+│   └── assets/
+│       ├── sounds/
+│       └── Logo.png
+├── android/
+└── ios/
 ```
 
-### iOS
+## 🔐 Security Features
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+- **Encrypted Storage**: Secure token storage
+- **Key-Based Auth**: Unique access keys per branch (24-hour session)
+- **Server Validation**: All keys verified against Supabase
+- **Session Management**: Auto-refresh tokens
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+## 📝 Version History
 
-```sh
-bundle install
-```
+### v1.0.1 (Current)
+- Migrated from Expo to React Native CLI
+- Added Excel export with date range picker
+- Implemented key-based authorization
+- Added daily sales counter with badges
+- Sound-only feedback (removed blocking alerts)
+- Branch-specific pricing management
+- Real-time dashboard updates
 
-Then, and every time you update your native dependencies, run:
+## 🤝 Contributing
 
-```sh
-bundle exec pod install
-```
+This is a private project. For access or collaboration, contact the repository owner.
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## 📄 License
 
-```sh
-# Using npm
-npm run ios
+Proprietary - All rights reserved
 
-# OR using Yarn
-yarn ios
-```
+## 👨‍💻 Author
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+**Vipul Dev**
+- GitHub: [@vipul-dev9404](https://github.com/vipul-dev9404)
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## 🐛 Known Issues
 
-## Step 3: Modify your app
+- None currently reported
 
-Now that you have successfully run the app, let's make changes!
+## 📞 Support
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+For issues or questions, please create an issue in the GitHub repository.
