@@ -239,7 +239,6 @@ DevafoodSalesManager/
 ## 📝 Version History
 
 ### v1.0.1 (Current)
-- Migrated from Expo to React Native CLI
 - Added Excel export with date range picker
 - Implemented key-based authorization
 - Added daily sales counter with badges
